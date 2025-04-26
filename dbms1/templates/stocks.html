@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stocks - Stock Management System</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Stock Management System</h1>
+            <nav>
+                <ul>
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/users">Users</a></li>
+                    <li><a href="/stocks" class="active">Stocks</a></li>
+                    <li><a href="/transactions">Transactions</a></li>
+                    <li><a href="/portfolio">Portfolio</a></li>
+                    <li><a href="/brokers">Brokers</a></li>
+                    <li><a href="/watchlist">Watchlist</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <h2>Stock Management</h2>
+        
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <section class="form-section">
+            <h3>Add New Stock</h3>
+            <form action="/add_stock" method="post">
+                <div class="form-group">
+                    <label for="symbol">Symbol:</label>
+                    <input type="text" id="symbol" name="symbol" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="company_name">Company Name:</label>
+                    <input type="text" id="company_name" name="company_name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="sector">Sector:</label>
+                    <input type="text" id="sector" name="sector" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="current_price">Current Price:</label>
+                    <input type="number" id="current_price" name="current_price" step="0.01" required>
+                </div>
+                
+                <button type="submit" class="btn">Add Stock</button>
+            </form>
+        </section>
+        
+        <section class="table-section">
+            <h3>Stock List</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Symbol</th>
+                        <th>Company Name</th>
+                        <th>Sector</th>
+                        <th>Current Price</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stock in stocks %}
+                    <tr>
+                        <td>{{ stock.stock_id }}</td>
+                        <td>{{ stock.symbol }}</td>
+                        <td>{{ stock.company_name }}</td>
+                        <td>{{ stock.sector }}</td>
+                        <td>${{ stock.current_price }}</td>
+                        <td class="action-buttons">
+                            <a href="/edit_stock/{{ stock.stock_id }}" class="btn btn-edit btn-sm">Edit</a>
+                            <a href="#" onclick="confirmDelete('{{ stock.stock_id }}', '{{ stock.symbol }} - {{ stock.company_name }}')" class="btn btn-delete btn-sm">Delete</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4>Confirm Delete</h4>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the stock: <span id="stockName"></span>?</p>
+                <p class="warning">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelDelete" class="btn btn-secondary">Cancel</button>
+                <form id="deleteForm" action="/delete_stock" method="post" style="display: inline;">
+                    <input type="hidden" id="deleteStockId" name="stock_id">
+                    <button type="submit" class="btn btn-delete">Delete Stock</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <section class="search-filter">
+        <h3>Search and Filter</h3>
+        <form action="/search_stocks" method="get" class="search-form">
+            <div class="form-group">
+                <label for="search">Search:</label>
+                <input type="text" id="search" name="search" placeholder="Symbol or Company Name">
+            </div>
+            
+            <div class="form-group">
+                <label for="sector_filter">Filter by Sector:</label>
+                <select id="sector_filter" name="sector">
+                    <option value="">All Sectors</option>
+                    {% for sector in sectors %}
+                        <option value="{{ sector }}">{{ sector }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="price_range">Price Range:</label>
+                <div class="range-inputs">
+                    <input type="number" id="min_price" name="min_price" placeholder="Min" step="0.01">
+                    <span>to</span>
+                    <input type="number" id="max_price" name="max_price" placeholder="Max" step="0.01">
+                </div>
+            </div>
+            
+            <button type="submit" class="btn">Search</button>
+            <a href="/stocks" class="btn btn-secondary">Reset</a>
+        </form>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Stock Management System</p>
+        </div>
+    </footer>
+
+    <script>
+        // Modal functionality
+        const modal = document.getElementById("deleteModal");
+        const closeBtn = document.getElementsByClassName("close")[0];
+        const cancelBtn = document.getElementById("cancelDelete");
+        const stockNameElement = document.getElementById("stockName");
+        const deleteStockIdInput = document.getElementById("deleteStockId");
+        const deleteForm = document.getElementById("deleteForm");
+
+        // Function to show the delete confirmation modal
+        function confirmDelete(stockId, stockName) {
+            stockNameElement.textContent = stockName;
+            deleteStockIdInput.value = stockId;
+            modal.style.display = "block";
+        }
+
+        // Close the modal when clicking the X
+        closeBtn.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        // Close the modal when clicking the Cancel button
+        cancelBtn.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        // Close the modal when clicking outside of it
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        // Dynamic price formatting
+        document.addEventListener('DOMContentLoaded', function() {
+            const priceInputs = document.querySelectorAll('input[type="number"][step="0.01"]');
+            priceInputs.forEach(input => {
+                input.addEventListener('blur', function() {
+                    if (this.value) {
+                        this.value = parseFloat(this.value).toFixed(2);
+                    }
+                });
+            });
+        });
+
+        // Form validation
+        const addStockForm = document.querySelector('form[action="/add_stock"]');
+        if (addStockForm) {
+            addStockForm.addEventListener('submit', function(event) {
+                const symbolInput = document.getElementById('symbol');
+                const priceInput = document.getElementById('current_price');
+                
+                // Validate symbol format (uppercase letters)
+                const symbolPattern = /^[A-Z]+$/;
+                if (!symbolPattern.test(symbolInput.value)) {
+                    alert("Stock symbol should contain only uppercase letters.");
+                    event.preventDefault();
+                    return;
+                }
+                
+                // Validate price (positive number)
+                if (parseFloat(priceInput.value) <= 0) {
+                    alert("Stock price must be a positive number.");
+                    event.preventDefault();
+                    return;
+                }
+            });
+        }
+        
+        // Highlight current nav item
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('nav a');
+            
+            navLinks.forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
